@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Search</title>
+    <style>
+        body { font-family: sans-serif; max-width: 500px; margin: 60px auto; }
+        input { width: 100%; padding: 8px; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+    <a href="/">&larr; Home</a>
+    <h1>Search</h1>
+    <form method="GET">
+        <input type="text" name="q" placeholder="Search..." value="{{ query }}" autocomplete="off">
+        <button type="submit">Search</button>
+    </form>
+
+    {# VULNERABLE ON PURPOSE: `| safe` disables autoescaping so raw HTML/JS runs #}
+    <p>You searched for: {{ query | safe }}</p>
+
+    <p><small>Try: <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> in the search box.</small></p>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSentry WAF Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+</head>
+<body>
+<div class="container-fluid">
+
+    <div class="dashboard-title d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h1>🛡️ WebSentry WAF Dashboard</h1>
+            <p>Real-Time Web Application Firewall Monitoring</p>
+        </div>
+        <button class="btn btn-outline-light" id="download-report-btn" onclick="downloadReport()">
+            📄 Download Report
+        </button>
+    </div>
+
+    <div class="row g-4 px-4">
+        <div class="col-md-4">
+            <div class="glass metric-card">
+                <h1 class="packet-color" id="total-requests">{{ total_requests }}</h1>
+                <h5>Total Requests</h5>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass metric-card">
+                <h1 class="alert-color" id="blocked-requests">{{ blocked_requests }}</h1>
+                <h5>Blocked (Attacks)</h5>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass metric-card">
+                <h1 class="threat-color" id="allowed-requests">{{ allowed_requests }}</h1>
+                <h5>Allowed (Clean)</h5>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5 px-4">
+        <div class="col-lg-8">
+            <div class="glass chart-container">
+                <div id="chart"></div>
+                <h3 id="chart-empty" style="text-align:center;color:white;display:none;">
+                    No Attacks Blocked Yet
+                </h3>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="glass summary-card">
+                <h3>🌐 Top Attacker IPs</h3>
+                <hr>
+                <div id="top-attackers">
+                    {% for ip, count in top_attackers %}
+                    <p>{{ ip }} ({{ count }})</p>
+                    {% endfor %}
+                    {% if not top_attackers %}
+                    <p class="text-muted">No attacks yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-5 px-4">
+        <h2 class="mb-4">🚨 Recent Blocked Requests</h2>
+        <div class="row" id="alert-list">
+            {% for alert in alerts %}
+            <div class="col-md-4 mb-4">
+                <div class="glass alert-card">
+                    <h5 class="alert-title">{{ alert.attack }}</h5>
+                    <hr>
+                    <p><strong>Source:</strong> {{ alert.src_ip }}</p>
+                    <p><strong>Path:</strong> {{ alert.method }} {{ alert.path }}</p>
+                    <p><strong>Field:</strong> {{ alert.field }}</p>
+                </div>
+            </div>
+            {% endfor %}
+            {% if not alerts %}
+            <p class="text-muted px-3">No blocked requests yet — try one of the attack payloads against the proxy.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="footer">
+        Powered by WebSentry WAF
+        <span id="last-updated"></span>
+    </div>
+
+</div>
+
+<script>
+const CHART_LAYOUT = {
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    font: { color: "white" },
+    title: { text: "Attack Distribution", x: 0.5 },
+    margin: { t: 50, b: 20, l: 20, r: 20 }
+};
+
+function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str == null ? "" : String(str);
+    return div.innerHTML;
+}
+
+function drawChart(labels, values) {
+    const chartEl = document.getElementById("chart");
+    const emptyEl = document.getElementById("chart-empty");
+
+    if (!labels.length) {
+        chartEl.style.display = "none";
+        emptyEl.style.display = "block";
+        return;
+    }
+
+    chartEl.style.display = "block";
+    emptyEl.style.display = "none";
+
+    const trace = [{ type: "pie", labels: labels, values: values }];
+
+    if (chartEl.dataset.rendered === "true") {
+        Plotly.react(chartEl, trace, CHART_LAYOUT, { displayModeBar: false });
+    } else {
+        Plotly.newPlot(chartEl, trace, CHART_LAYOUT, { displayModeBar: false });
+        chartEl.dataset.rendered = "true";
+    }
+}
+
+function renderAlerts(alerts) {
+    const container = document.getElementById("alert-list");
+
+    if (!alerts.length) {
+        container.innerHTML = '<p class="text-muted px-3">No blocked requests yet.</p>';
+        return;
+    }
+
+    container.innerHTML = alerts.map(function (alert) {
+        return (
+            '<div class="col-md-4 mb-4">' +
+                '<div class="glass alert-card">' +
+                    '<h5 class="alert-title">' + escapeHtml(alert.attack) + '</h5>' +
+                    '<hr>' +
+                    '<p><strong>Source:</strong> ' + escapeHtml(alert.src_ip) + '</p>' +
+                    '<p><strong>Path:</strong> ' + escapeHtml(alert.method) + ' ' + escapeHtml(alert.path) + '</p>' +
+                    '<p><strong>Field:</strong> ' + escapeHtml(alert.field) + '</p>' +
+                '</div>' +
+            '</div>'
+        );
+    }).join("");
+}
+
+function renderAttackers(entries) {
+    const container = document.getElementById("top-attackers");
+    if (!entries.length) {
+        container.innerHTML = '<p class="text-muted">No attacks yet.</p>';
+        return;
+    }
+    container.innerHTML = entries.map(function (entry) {
+        return '<p>' + escapeHtml(entry[0]) + ' (' + escapeHtml(entry[1]) + ')</p>';
+    }).join("");
+}
+
+function updateMetrics(data) {
+    document.getElementById("total-requests").textContent = data.total_requests;
+    document.getElementById("blocked-requests").textContent = data.blocked_requests;
+    document.getElementById("allowed-requests").textContent = data.allowed_requests;
+    document.getElementById("last-updated").textContent =
+        " — updated " + new Date().toLocaleTimeString();
+}
+
+async function refreshDashboard() {
+    try {
+        const response = await fetch("/api/dashboard-data");
+        if (!response.ok) throw new Error("Bad response: " + response.status);
+        const data = await response.json();
+
+        updateMetrics(data);
+        drawChart(data.attack_labels, data.attack_values);
+        renderAlerts(data.alerts);
+        renderAttackers(data.top_attackers || []);
+    } catch (err) {
+        console.error("Dashboard refresh failed:", err);
+    }
+}
+
+async function downloadReport() {
+    const btn = document.getElementById("download-report-btn");
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Generating…";
+
+    try {
+        const response = await fetch("/api/generate-report", { method: "POST" });
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.error || "Could not generate a report.");
+            return;
+        }
+        window.location.href = "/reports/waf_incident_report.txt";
+    } catch (err) {
+        console.error("Report generation failed:", err);
+        alert("Report generation failed. Check the server console for details.");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+}
+
+drawChart({{ attack_labels | tojson }}, {{ attack_values | tojson }});
+setInterval(refreshDashboard, 1000);
+</script>
+
+</body>
+</html>

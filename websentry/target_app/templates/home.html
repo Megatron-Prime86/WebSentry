@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Demo Target App</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 60px auto; }
+        a { display: block; margin: 10px 0; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h1>Vulnerable Demo App</h1>
+    <p>For WAF testing only. Do not expose publicly.</p>
+    <a href="/login">Login (SQL Injection demo)</a>
+    <a href="/search?q=hello">Search (XSS demo)</a>
+    <a href="/ping">Ping Tool (Command Injection demo)</a>
+</body>
+</html>

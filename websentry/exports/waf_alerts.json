@@ -1,0 +1,12 @@
+[
+  {
+    "timestamp": "2026-07-23T12:05:43.768894+00:00",
+    "src_ip": "106.51.210.98",
+    "path": "/login",
+    "method": "POST",
+    "attack": "SQL Injection",
+    "field": "username",
+    "value": "' OR '1'='1'",
+    "action": "blocked"
+  }
+]

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <style>
+        body { font-family: sans-serif; max-width: 400px; margin: 60px auto; }
+        input { display: block; width: 100%; margin: 8px 0; padding: 8px; }
+        .result { margin-top: 20px; padding: 10px; background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <a href="/">&larr; Home</a>
+    <h1>Login</h1>
+    <form method="POST">
+        <input type="text" name="username" placeholder="Username" autocomplete="off">
+        <input type="text" name="password" placeholder="Password" autocomplete="off">
+        <button type="submit">Login</button>
+    </form>
+
+    {% if result %}
+    <div class="result">{{ result }}</div>
+    {% endif %}
+
+    <p><small>Try: <code>' OR '1'='1' --</code> as the username.</small></p>
+</body>
+</html>

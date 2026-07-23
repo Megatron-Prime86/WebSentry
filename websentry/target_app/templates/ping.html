@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ping Tool</title>
+    <style>
+        body { font-family: sans-serif; max-width: 500px; margin: 60px auto; }
+        input { width: 100%; padding: 8px; margin-bottom: 12px; }
+        pre { background: #f0f0f0; padding: 10px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <a href="/">&larr; Home</a>
+    <h1>Ping Tool</h1>
+    <form method="POST">
+        <input type="text" name="host" placeholder="Host or IP" autocomplete="off">
+        <button type="submit">Ping</button>
+    </form>
+
+    {% if output %}
+    <pre>{{ output }}</pre>
+    {% endif %}
+
+    <p><small>Try: <code>127.0.0.1; whoami</code> as the host.</small></p>
+</body>
+</html>
